@@ -42,22 +42,8 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       />
-      <Route
-        path="/services"
-        element={
-          <ProtectedRoute>
-            <Services />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/services/:id"
-        element={
-          <ProtectedRoute>
-            <ServiceDetail />
-          </ProtectedRoute>
-        }
-      />
+      <Route path="/services" element={<Services />} />
+      <Route path="/services/:id" element={<ServiceDetail />} />
       <Route
         path="/provider/profile"
         element={

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Navbar } from '../components/Navbar';
 import { supabase } from '../lib/supabase';
+import { SERVICE_CATEGORIES, CATEGORY_ICONS } from '../constants/services';
 
 interface Service {
   id: string;
@@ -25,16 +26,7 @@ interface ProviderRating {
   review_count: number;
 }
 
-const CATEGORIES = [
-  'All',
-  'Lawn Care',
-  'Window Washing',
-  'Snow Shoveling',
-  'Pet Sitting',
-  'Tutoring',
-  'Car Washing',
-  'Other',
-];
+const CATEGORIES = ['All', ...SERVICE_CATEGORIES];
 
 export const Services = () => {
   const [services, setServices] = useState<Service[]>([]);
@@ -120,12 +112,15 @@ export const Services = () => {
             <button
               key={category}
               onClick={() => setSelectedCategory(category)}
-              className={`px-4 py-2 rounded-full ${
+              className={`px-4 py-2 rounded-full flex items-center gap-2 transition-all ${
                 selectedCategory === category
-                  ? 'bg-primary-600 text-white'
-                  : 'bg-white text-gray-700 hover:bg-gray-100'
+                  ? 'bg-gradient-to-r from-primary-500 to-accent-500 text-white shadow-glow'
+                  : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
               }`}
             >
+              {category !== 'All' && (
+                <span className="text-lg">{CATEGORY_ICONS[category as keyof typeof CATEGORY_ICONS]}</span>
+              )}
               {category}
             </button>
           ))}
@@ -160,8 +155,9 @@ export const Services = () => {
                 <div className="p-6">
                   <div className="flex justify-between items-start mb-2">
                     <h3 className="text-xl font-semibold">{service.title}</h3>
-                    <span className="bg-primary-100 text-primary-700 text-xs px-2 py-1 rounded">
-                      {service.category}
+                    <span className="bg-primary-100 text-primary-700 text-xs px-3 py-1 rounded-full flex items-center gap-1">
+                      <span>{CATEGORY_ICONS[service.category as keyof typeof CATEGORY_ICONS]}</span>
+                      <span>{service.category}</span>
                     </span>
                   </div>
 
