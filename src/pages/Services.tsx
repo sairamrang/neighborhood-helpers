@@ -10,12 +10,19 @@ interface Service {
   category: string;
   price: number;
   price_type: string;
+  provider_id: string;
   service_providers: {
     profile_image_url: string;
     profiles: {
       full_name: string;
     };
   };
+}
+
+interface ProviderRating {
+  provider_id: string;
+  average_rating: number;
+  review_count: number;
 }
 
 const CATEGORIES = [
@@ -34,6 +41,7 @@ export const Services = () => {
   const [filteredServices, setFilteredServices] = useState<Service[]>([]);
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [loading, setLoading] = useState(true);
+  const [ratings, setRatings] = useState<Map<string, ProviderRating>>(new Map());
 
   useEffect(() => {
     fetchServices();
@@ -69,6 +77,19 @@ export const Services = () => {
 
       setServices(data || []);
       setFilteredServices(data || []);
+
+      // Fetch ratings for all providers
+      const { data: ratingsData } = await supabase
+        .from('provider_ratings')
+        .select('*');
+
+      if (ratingsData) {
+        const ratingsMap = new Map<string, ProviderRating>();
+        ratingsData.forEach((rating: ProviderRating) => {
+          ratingsMap.set(rating.provider_id, rating);
+        });
+        setRatings(ratingsMap);
+      }
     } catch (error) {
       console.error('Error fetching services:', error);
     } finally {
@@ -148,7 +169,7 @@ export const Services = () => {
                     {service.description || 'No description available'}
                   </p>
 
-                  <div className="flex justify-between items-center">
+                  <div className="flex justify-between items-center mb-3">
                     <div className="text-sm text-gray-600">
                       by {service.service_providers.profiles.full_name}
                     </div>
@@ -159,6 +180,20 @@ export const Services = () => {
                       </span>
                     </div>
                   </div>
+
+                  {ratings.get(service.provider_id) && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <div className="flex items-center gap-1">
+                        <span className="text-yellow-400">⭐</span>
+                        <span className="font-semibold">
+                          {ratings.get(service.provider_id)!.average_rating}
+                        </span>
+                      </div>
+                      <span className="text-gray-500">
+                        ({ratings.get(service.provider_id)!.review_count} {ratings.get(service.provider_id)!.review_count === 1 ? 'review' : 'reviews'})
+                      </span>
+                    </div>
+                  )}
                 </div>
               </Link>
             ))}

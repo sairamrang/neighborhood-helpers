@@ -5,6 +5,7 @@ import { serviceRoutes } from './routes/services.js';
 import { bookingRoutes } from './routes/bookings.js';
 import { providerRoutes } from './routes/providers.js';
 import { adminRoutes } from './routes/admin.js';
+import { reviewRoutes } from './routes/reviews.js';
 
 dotenv.config();
 
@@ -24,6 +25,7 @@ app.use('/api/services', serviceRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/providers', providerRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/reviews', reviewRoutes);
 
 // Error handling middleware
 app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {

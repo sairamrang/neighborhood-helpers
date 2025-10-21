@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Navbar } from '../components/Navbar';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
+import { ReviewForm } from '../components/ReviewForm';
 
 interface Booking {
   id: string;
@@ -9,6 +10,7 @@ interface Booking {
   notes: string;
   status: string;
   created_at: string;
+  provider_id: string;
   services: {
     title: string;
     price: number;
@@ -19,11 +21,17 @@ interface Booking {
     email: string;
   };
   service_providers?: {
+    id: string;
     profiles: {
       full_name: string;
       email: string;
     };
   };
+  reviews?: Array<{
+    id: string;
+    rating: number;
+    feedback: string;
+  }>;
 }
 
 export const Bookings = () => {
@@ -31,6 +39,7 @@ export const Bookings = () => {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState<string | null>(null);
+  const [reviewingBooking, setReviewingBooking] = useState<Booking | null>(null);
 
   useEffect(() => {
     fetchBookings();
@@ -52,10 +61,16 @@ export const Bookings = () => {
           email
         ),
         service_providers!inner (
+          id,
           profiles!service_providers_user_id_fkey (
             full_name,
             email
           )
+        ),
+        reviews (
+          id,
+          rating,
+          feedback
         )
       `);
 
@@ -109,6 +124,7 @@ export const Bookings = () => {
     switch (status) {
       case 'pending':
         return 'bg-yellow-100 text-yellow-800';
+      case 'confirmed':
       case 'accepted':
         return 'bg-green-100 text-green-800';
       case 'declined':
@@ -196,53 +212,95 @@ export const Bookings = () => {
                   {profile?.user_type === 'provider' && booking.status === 'pending' && (
                     <>
                       <button
-                        onClick={() => handleStatusUpdate(booking.id, 'accepted')}
+                        onClick={() => handleStatusUpdate(booking.id, 'confirmed')}
                         disabled={updating === booking.id}
-                        className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 disabled:opacity-50"
+                        className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50 font-semibold transition-all"
                       >
-                        {updating === booking.id ? 'Updating...' : 'Accept'}
+                        {updating === booking.id ? 'Updating...' : '✓ Accept'}
                       </button>
                       <button
-                        onClick={() => handleStatusUpdate(booking.id, 'declined')}
+                        onClick={() => handleStatusUpdate(booking.id, 'cancelled')}
                         disabled={updating === booking.id}
-                        className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 disabled:opacity-50"
+                        className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 disabled:opacity-50 font-semibold transition-all"
                       >
-                        {updating === booking.id ? 'Updating...' : 'Decline'}
+                        {updating === booking.id ? 'Updating...' : '✗ Decline'}
                       </button>
                     </>
                   )}
 
-                  {profile?.user_type === 'provider' && booking.status === 'accepted' && (
-                    <button
-                      onClick={() => handleStatusUpdate(booking.id, 'completed')}
-                      disabled={updating === booking.id}
-                      className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50"
-                    >
-                      {updating === booking.id ? 'Updating...' : 'Mark as Completed'}
-                    </button>
+                  {profile?.user_type === 'provider' && (booking.status === 'confirmed' || booking.status === 'accepted') && (
+                    <>
+                      <button
+                        onClick={() => handleStatusUpdate(booking.id, 'completed')}
+                        disabled={updating === booking.id}
+                        className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 font-semibold transition-all"
+                      >
+                        {updating === booking.id ? 'Updating...' : '✓ Mark as Completed'}
+                      </button>
+                      <button
+                        onClick={() => handleStatusUpdate(booking.id, 'cancelled')}
+                        disabled={updating === booking.id}
+                        className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 disabled:opacity-50 font-semibold transition-all"
+                      >
+                        {updating === booking.id ? 'Cancelling...' : 'Cancel'}
+                      </button>
+                    </>
                   )}
 
                   {profile?.user_type === 'resident' && booking.status === 'pending' && (
                     <button
                       onClick={() => handleStatusUpdate(booking.id, 'cancelled')}
                       disabled={updating === booking.id}
-                      className="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 disabled:opacity-50"
+                      className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 disabled:opacity-50 font-semibold transition-all"
                     >
                       {updating === booking.id ? 'Cancelling...' : 'Cancel Booking'}
                     </button>
                   )}
 
-                  {booking.status !== 'pending' && (
-                    <div className="text-gray-600 italic">
-                      No actions available for {booking.status} bookings
+                  {profile?.user_type === 'resident' && booking.status === 'completed' && !booking.reviews?.length && (
+                    <button
+                      onClick={() => setReviewingBooking(booking)}
+                      className="bg-gradient-to-r from-primary-500 to-accent-500 text-white px-4 py-2 rounded-lg hover:from-primary-600 hover:to-accent-600 font-semibold transition-all transform hover:scale-105"
+                    >
+                      ⭐ Leave a Review
+                    </button>
+                  )}
+
+                  {booking.reviews && booking.reviews.length > 0 && (
+                    <div className="text-green-600 font-semibold flex items-center gap-2">
+                      ✓ You reviewed this service ({booking.reviews[0].rating} stars)
                     </div>
                   )}
+
+                  {booking.status === 'completed' && !booking.reviews?.length && profile?.user_type === 'provider' ? (
+                    <div className="text-gray-600 italic">
+                      This booking is completed
+                    </div>
+                  ) : null}
+
+                  {booking.status === 'cancelled' || booking.status === 'declined' ? (
+                    <div className="text-gray-600 italic">
+                      This booking is {booking.status}
+                    </div>
+                  ) : null}
                 </div>
               </div>
             ))}
           </div>
         )}
       </div>
+
+      {reviewingBooking && (
+        <ReviewForm
+          bookingId={reviewingBooking.id}
+          providerId={reviewingBooking.service_providers?.id || reviewingBooking.provider_id}
+          onSuccess={() => {
+            setReviewingBooking(null);
+            fetchBookings();
+          }}
+          onCancel={() => setReviewingBooking(null)}
+        />
+      )}
     </div>
   );
 };

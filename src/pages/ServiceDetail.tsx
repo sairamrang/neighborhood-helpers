@@ -11,6 +11,7 @@ interface ServiceDetail {
   category: string;
   price: number;
   price_type: string;
+  provider_id: string;
   service_providers: {
     id: string;
     bio: string;
@@ -20,6 +21,21 @@ interface ServiceDetail {
       email: string;
     };
   };
+}
+
+interface Review {
+  id: string;
+  rating: number;
+  feedback: string;
+  created_at: string;
+  profiles: {
+    full_name: string;
+  };
+}
+
+interface ProviderRating {
+  average_rating: number;
+  review_count: number;
 }
 
 export const ServiceDetail = () => {
@@ -33,6 +49,8 @@ export const ServiceDetail = () => {
   const [bookingLoading, setBookingLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [rating, setRating] = useState<ProviderRating | null>(null);
 
   useEffect(() => {
     fetchService();
@@ -60,6 +78,38 @@ export const ServiceDetail = () => {
       if (error) throw error;
 
       setService(data);
+
+      // Fetch reviews for this provider
+      if (data) {
+        const { data: reviewsData } = await supabase
+          .from('reviews')
+          .select(`
+            id,
+            rating,
+            feedback,
+            created_at,
+            profiles!reviews_resident_id_fkey (
+              full_name
+            )
+          `)
+          .eq('provider_id', data.service_providers.id)
+          .order('created_at', { ascending: false });
+
+        if (reviewsData) {
+          setReviews(reviewsData as any);
+        }
+
+        // Fetch average rating
+        const { data: ratingData } = await supabase
+          .from('provider_ratings')
+          .select('*')
+          .eq('provider_id', data.service_providers.id)
+          .single();
+
+        if (ratingData) {
+          setRating(ratingData);
+        }
+      }
     } catch (error) {
       console.error('Error fetching service:', error);
     } finally {
@@ -186,16 +236,61 @@ export const ServiceDetail = () => {
                     </div>
                   )}
                 </div>
-                <div>
-                  <h3 className="font-semibold text-lg">
-                    {service.service_providers.profiles.full_name}
-                  </h3>
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-2">
+                    <h3 className="font-semibold text-lg">
+                      {service.service_providers.profiles.full_name}
+                    </h3>
+                    {rating && (
+                      <div className="flex items-center gap-1 text-sm">
+                        <span className="text-yellow-400">⭐</span>
+                        <span className="font-semibold">{rating.average_rating}</span>
+                        <span className="text-gray-500">
+                          ({rating.review_count} {rating.review_count === 1 ? 'review' : 'reviews'})
+                        </span>
+                      </div>
+                    )}
+                  </div>
                   <p className="text-gray-600 mt-1">
                     {service.service_providers.bio || 'No bio available.'}
                   </p>
                 </div>
               </div>
             </div>
+
+            {/* Reviews Section */}
+            {reviews.length > 0 && (
+              <div className="mb-6 border-t pt-6">
+                <h2 className="text-xl font-semibold mb-4">Reviews</h2>
+                <div className="space-y-4">
+                  {reviews.map((review) => (
+                    <div key={review.id} className="bg-gray-50 rounded-lg p-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="flex">
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <span
+                              key={star}
+                              className={star <= review.rating ? 'text-yellow-400' : 'text-gray-300'}
+                            >
+                              ⭐
+                            </span>
+                          ))}
+                        </div>
+                        <span className="text-sm font-semibold text-gray-700">
+                          {review.profiles.full_name}
+                        </span>
+                        <span className="text-sm text-gray-500">
+                          • {new Date(review.created_at).toLocaleDateString()}
+                        </span>
+                      </div>
+                      {review.feedback && (
+                        <p className="text-gray-700">{review.feedback}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {profile?.user_type === 'resident' && (
               <div className="border-t pt-6">

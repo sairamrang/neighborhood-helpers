@@ -42,11 +42,24 @@ CREATE TABLE bookings (
   service_id UUID REFERENCES services(id) ON DELETE CASCADE NOT NULL,
   resident_id UUID REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
   provider_id UUID REFERENCES service_providers(id) ON DELETE CASCADE NOT NULL,
-  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'declined', 'completed', 'cancelled')),
+  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'confirmed', 'declined', 'completed', 'cancelled')),
   booking_date TIMESTAMPTZ NOT NULL,
   notes TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Reviews table
+CREATE TABLE reviews (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  booking_id UUID REFERENCES bookings(id) ON DELETE CASCADE NOT NULL,
+  provider_id UUID REFERENCES service_providers(id) ON DELETE CASCADE NOT NULL,
+  resident_id UUID REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
+  rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
+  feedback TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(booking_id)
 );
 
 -- Create indexes for better performance
@@ -59,6 +72,9 @@ CREATE INDEX idx_bookings_service_id ON bookings(service_id);
 CREATE INDEX idx_bookings_resident_id ON bookings(resident_id);
 CREATE INDEX idx_bookings_provider_id ON bookings(provider_id);
 CREATE INDEX idx_bookings_status ON bookings(status);
+CREATE INDEX idx_reviews_provider_id ON reviews(provider_id);
+CREATE INDEX idx_reviews_resident_id ON reviews(resident_id);
+CREATE INDEX idx_reviews_booking_id ON reviews(booking_id);
 
 -- Row Level Security (RLS) Policies
 
@@ -67,6 +83,7 @@ ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE service_providers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE services ENABLE ROW LEVEL SECURITY;
 ALTER TABLE bookings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE reviews ENABLE ROW LEVEL SECURITY;
 
 -- Profiles policies
 CREATE POLICY "Public profiles are viewable by everyone"
@@ -208,3 +225,41 @@ CREATE TRIGGER update_services_updated_at BEFORE UPDATE ON services
 
 CREATE TRIGGER update_bookings_updated_at BEFORE UPDATE ON bookings
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_reviews_updated_at BEFORE UPDATE ON reviews
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Reviews policies
+CREATE POLICY "Reviews are publicly readable"
+  ON reviews FOR SELECT
+  USING (true);
+
+CREATE POLICY "Residents can create reviews for their bookings"
+  ON reviews FOR INSERT
+  WITH CHECK (
+    auth.uid() = resident_id
+    AND EXISTS (
+      SELECT 1 FROM bookings
+      WHERE bookings.id = booking_id
+      AND bookings.resident_id = resident_id
+      AND bookings.status = 'completed'
+    )
+  );
+
+CREATE POLICY "Residents can update their own reviews"
+  ON reviews FOR UPDATE
+  USING (auth.uid() = resident_id)
+  WITH CHECK (auth.uid() = resident_id);
+
+CREATE POLICY "Residents can delete their own reviews"
+  ON reviews FOR DELETE
+  USING (auth.uid() = resident_id);
+
+-- Create a view to get provider average ratings
+CREATE OR REPLACE VIEW provider_ratings AS
+SELECT
+  provider_id,
+  COUNT(*) as review_count,
+  ROUND(AVG(rating)::numeric, 1) as average_rating
+FROM reviews
+GROUP BY provider_id;

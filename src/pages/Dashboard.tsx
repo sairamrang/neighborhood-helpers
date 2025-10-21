@@ -11,8 +11,32 @@ interface Service {
   category: string;
   price: number;
   price_type: string;
+  provider_id: string;
   service_providers: {
     profile_image_url: string;
+    profiles: {
+      full_name: string;
+    };
+  };
+}
+
+interface ProviderRating {
+  provider_id: string;
+  average_rating: number;
+  review_count: number;
+}
+
+interface Booking {
+  id: string;
+  booking_date: string;
+  status: string;
+  services: {
+    title: string;
+  };
+  profiles?: {
+    full_name: string;
+  };
+  service_providers?: {
     profiles: {
       full_name: string;
     };
@@ -27,11 +51,14 @@ export const Dashboard = () => {
     totalServices: 0,
   });
   const [latestServices, setLatestServices] = useState<Service[]>([]);
+  const [upcomingBookings, setUpcomingBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
+  const [ratings, setRatings] = useState<Map<string, ProviderRating>>(new Map());
 
   useEffect(() => {
     fetchStats();
     fetchLatestServices();
+    fetchUpcomingBookings();
   }, [profile]);
 
   const fetchLatestServices = async () => {
@@ -56,8 +83,72 @@ export const Dashboard = () => {
       if (error) throw error;
 
       setLatestServices(data || []);
+
+      // Fetch ratings for all providers
+      const { data: ratingsData } = await supabase
+        .from('provider_ratings')
+        .select('*');
+
+      if (ratingsData) {
+        const ratingsMap = new Map<string, ProviderRating>();
+        ratingsData.forEach((rating: ProviderRating) => {
+          ratingsMap.set(rating.provider_id, rating);
+        });
+        setRatings(ratingsMap);
+      }
     } catch (error) {
       console.error('Error fetching latest services:', error);
+    }
+  };
+
+  const fetchUpcomingBookings = async () => {
+    if (!profile) return;
+
+    try {
+      let query = supabase.from('bookings').select(`
+        id,
+        booking_date,
+        status,
+        services!inner (
+          title
+        ),
+        profiles!bookings_resident_id_fkey (
+          full_name
+        ),
+        service_providers!inner (
+          profiles!service_providers_user_id_fkey (
+            full_name
+          )
+        )
+      `);
+
+      // Get bookings for the current user
+      if (profile.user_type === 'resident') {
+        query = query.eq('resident_id', profile.id);
+      } else {
+        const { data: provider } = await supabase
+          .from('service_providers')
+          .select('id')
+          .eq('user_id', profile.id)
+          .single();
+
+        if (provider) {
+          query = query.eq('provider_id', provider.id);
+        }
+      }
+
+      // Only show pending and confirmed bookings in the future
+      const { data, error } = await query
+        .in('status', ['pending', 'confirmed'])
+        .gte('booking_date', new Date().toISOString())
+        .order('booking_date', { ascending: true })
+        .limit(5);
+
+      if (error) throw error;
+
+      setUpcomingBookings(data || []);
+    } catch (error) {
+      console.error('Error fetching upcoming bookings:', error);
     }
   };
 
@@ -229,6 +320,65 @@ export const Dashboard = () => {
           </div>
         </div>
 
+        {/* Upcoming Appointments Section */}
+        <div className="glass-card p-6 rounded-xl mb-8">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-2xl font-display font-bold bg-gradient-to-r from-primary-600 to-accent-600 bg-clip-text text-transparent">
+              📅 Upcoming Appointments
+            </h2>
+            <Link
+              to="/bookings"
+              className="text-primary-600 hover:text-primary-700 font-semibold text-sm hover:underline"
+            >
+              View All →
+            </Link>
+          </div>
+
+          {upcomingBookings.length === 0 ? (
+            <div className="text-center py-8 text-gray-600">
+              <p>No upcoming appointments. {profile?.user_type === 'resident' ? 'Book a service to get started!' : 'Waiting for booking requests...'}</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {upcomingBookings.map((booking) => (
+                <Link
+                  key={booking.id}
+                  to="/bookings"
+                  className="block bg-white border border-gray-200 p-4 rounded-lg hover:shadow-lg transition-all"
+                >
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <h3 className="font-bold text-gray-800">{booking.services.title}</h3>
+                      <p className="text-sm text-gray-600">
+                        {profile?.user_type === 'resident'
+                          ? `with ${booking.service_providers?.profiles.full_name}`
+                          : `for ${booking.profiles?.full_name}`
+                        }
+                      </p>
+                      <p className="text-sm text-gray-500 mt-1">
+                        📆 {new Date(booking.booking_date).toLocaleString('en-US', {
+                          weekday: 'short',
+                          month: 'short',
+                          day: 'numeric',
+                          hour: 'numeric',
+                          minute: '2-digit'
+                        })}
+                      </p>
+                    </div>
+                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                      booking.status === 'confirmed'
+                        ? 'bg-green-100 text-green-800'
+                        : 'bg-yellow-100 text-yellow-800'
+                    }`}>
+                      {booking.status === 'confirmed' ? '✓ Confirmed' : '⏳ Pending'}
+                    </span>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+
         {/* Latest Services Section */}
         <div className="glass-card p-6 rounded-xl">
           <div className="flex justify-between items-center mb-6">
@@ -281,7 +431,7 @@ export const Dashboard = () => {
                     {service.description || 'No description available'}
                   </p>
 
-                  <div className="flex justify-between items-center">
+                  <div className="flex justify-between items-center mb-2">
                     <span className="text-xs font-medium px-3 py-1 bg-primary-50 text-primary-700 rounded-full border border-primary-200">
                       {service.category}
                     </span>
@@ -292,6 +442,18 @@ export const Dashboard = () => {
                       </span>
                     </div>
                   </div>
+
+                  {ratings.get(service.provider_id) && (
+                    <div className="flex items-center gap-1 text-xs">
+                      <span className="text-yellow-400">⭐</span>
+                      <span className="font-semibold">
+                        {ratings.get(service.provider_id)!.average_rating}
+                      </span>
+                      <span className="text-gray-500">
+                        ({ratings.get(service.provider_id)!.review_count})
+                      </span>
+                    </div>
+                  )}
                 </Link>
               ))}
             </div>
