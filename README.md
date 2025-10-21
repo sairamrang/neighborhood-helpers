@@ -145,10 +145,14 @@ neighborhood-helpers/
 │
 ├── public/                       # Static assets
 ├── docs/                         # Documentation
+│   ├── README.md                # Documentation index
+│   ├── QUICKSTART.md            # Quick setup guide
 │   ├── PRD.md                   # Product Requirements Document
 │   ├── ARCHITECTURE.md          # Technical architecture
 │   ├── API.md                   # API documentation
-│   └── DEPLOYMENT.md            # Deployment guide
+│   ├── DEPLOYMENT.md            # Deployment guide
+│   ├── PROJECT_SUMMARY.md       # Project overview
+│   └── TROUBLESHOOTING.md       # Common issues and fixes
 │
 ├── supabase-schema.sql          # Database schema & RLS policies
 ├── fix-admin-access.sql         # Local dev admin helper
