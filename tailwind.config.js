@@ -36,6 +36,12 @@ export default {
           500: '#22c55e',
           600: '#16a34a',
         },
+        neon: {
+          pink: '#ff006e',
+          purple: '#8338ec',
+          blue: '#3a86ff',
+          green: '#06ffa5',
+        },
       },
       fontFamily: {
         sans: ['Inter var', 'system-ui', 'sans-serif'],
@@ -44,12 +50,11 @@ export default {
       boxShadow: {
         'glow': '0 0 20px rgba(233, 51, 255, 0.3)',
         'glow-lg': '0 0 40px rgba(233, 51, 255, 0.4)',
-        'card': '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-        'card-hover': '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+        'neon': '0 0 15px rgba(255, 0, 110, 0.5)',
       },
       backgroundImage: {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
-        'gradient-mesh': 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        'gradient-blue': 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
       },
       animation: {
         'float': 'float 3s ease-in-out infinite',
