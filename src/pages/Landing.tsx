@@ -12,6 +12,7 @@ interface Service {
   price: number;
   price_type: string;
   provider_id: string;
+  image_urls?: string[];
   service_providers: {
     profile_image_url: string;
     profiles: {
@@ -71,14 +72,14 @@ export const Landing = () => {
           *,
           service_providers!inner (
             profile_image_url,
-            is_approved,
-            profiles!inner (
+            approval_status,
+            profiles!service_providers_user_id_fkey (
               full_name
             )
           )
         `)
         .eq('is_active', true)
-        .eq('service_providers.is_approved', true)
+        .eq('service_providers.approval_status', 'approved')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -120,7 +121,7 @@ export const Landing = () => {
         {/* Hero Section */}
         <div className="text-center mb-16 animate-fade-in">
           <div className="inline-block mb-4 px-5 py-2 bg-primary-50 border border-primary-200 rounded-full text-sm font-semibold text-primary-700">
-            🏘️ Your Trusted Neighborhood Marketplace
+            🤝 Your Trusted Local Marketplace
           </div>
           <h1 className="text-5xl sm:text-6xl font-display font-bold mb-6 bg-gradient-to-r from-primary-600 to-accent-600 bg-clip-text text-transparent leading-tight">
             Local Help from<br />Your Neighbors
@@ -228,18 +229,34 @@ export const Landing = () => {
                 className="glass-card rounded-xl overflow-hidden hover:shadow-2xl transition-all duration-300 transform hover:scale-105"
               >
                 <div className="h-48 bg-gradient-to-br from-primary-100 to-accent-100 flex items-center justify-center relative overflow-hidden">
-                  {service.service_providers.profile_image_url ? (
+                  {service.image_urls && service.image_urls.length > 0 ? (
+                    /* Service Image */
+                    <>
+                      <img
+                        src={service.image_urls[0]}
+                        alt={service.title}
+                        className="w-full h-full object-cover"
+                      />
+                      {service.image_urls.length > 1 && (
+                        <div className="absolute top-3 left-3 bg-black/60 text-white text-xs px-2 py-1 rounded-full">
+                          +{service.image_urls.length - 1} more
+                        </div>
+                      )}
+                    </>
+                  ) : service.service_providers.profile_image_url ? (
+                    /* Fallback to provider image */
                     <img
                       src={service.service_providers.profile_image_url}
                       alt={service.title}
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-cover opacity-60"
                     />
                   ) : (
+                    /* Category icon fallback */
                     <div className="text-7xl">
                       {CATEGORY_ICONS[service.category as keyof typeof CATEGORY_ICONS] || '🧑‍💼'}
                     </div>
                   )}
-                  <div className="absolute top-3 right-3 px-3 py-1 bg-white/90 backdrop-blur-sm rounded-full text-xs font-semibold text-gray-700 flex items-center gap-1">
+                  <div className="absolute top-3 right-3 px-3 py-1 bg-white/90 backdrop-blur-sm rounded-full text-xs font-semibold text-gray-700 flex items-center gap-1 shadow-lg">
                     {CATEGORY_ICONS[service.category as keyof typeof CATEGORY_ICONS]}
                     {service.category}
                   </div>

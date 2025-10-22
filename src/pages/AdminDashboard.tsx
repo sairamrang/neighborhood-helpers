@@ -33,7 +33,7 @@ export const AdminDashboard = () => {
         .from('service_providers')
         .select(`
           *,
-          profiles!inner (
+          profiles!service_providers_user_id_fkey (
             full_name,
             email
           ),
@@ -43,7 +43,7 @@ export const AdminDashboard = () => {
             category
           )
         `)
-        .eq('is_approved', false)
+        .eq('approval_status', 'pending')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -62,7 +62,7 @@ export const AdminDashboard = () => {
     try {
       const { error } = await supabase
         .from('service_providers')
-        .update({ is_approved: approve })
+        .update({ approval_status: approve ? 'approved' : 'rejected' })
         .eq('id', providerId);
 
       if (error) throw error;

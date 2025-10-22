@@ -1,4 +1,4 @@
-// Service Categories for the Neighborhood Helpers Marketplace
+// Service Categories for the LocalAssist Marketplace
 
 export const SERVICE_CATEGORIES = [
   'Window Washing',

@@ -9,6 +9,7 @@ import { ServiceDetail } from './pages/ServiceDetail';
 import { ProviderProfile } from './pages/ProviderProfile';
 import { Bookings } from './pages/Bookings';
 import { AdminDashboard } from './pages/AdminDashboard';
+import { ProfileSettings } from './pages/ProfileSettings';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -65,6 +66,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <AdminDashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings"
+        element={
+          <ProtectedRoute>
+            <ProfileSettings />
           </ProtectedRoute>
         }
       />

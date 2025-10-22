@@ -20,6 +20,7 @@ interface ServiceDetail {
   price: number;
   price_type: string;
   provider_id: string;
+  image_urls?: string[];
   service_providers: {
     id: string;
     bio: string;
@@ -68,6 +69,9 @@ export const ServiceDetail = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
+  // Image gallery state
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+
   // Service-specific fields
   const [windowCount, setWindowCount] = useState<number>(10);
   const [techIssue, setTechIssue] = useState('');
@@ -91,7 +95,7 @@ export const ServiceDetail = () => {
             id,
             bio,
             profile_image_url,
-            profiles!inner (
+            profiles!service_providers_user_id_fkey (
               full_name,
               email
             )
@@ -403,23 +407,82 @@ export const ServiceDetail = () => {
         </button>
 
         <div className="bg-white rounded-lg shadow-md overflow-hidden">
-          <div className="h-64 bg-gradient-to-br from-primary-100 to-primary-200 flex items-center justify-center relative">
-            {service.service_providers.profile_image_url ? (
-              <img
-                src={service.service_providers.profile_image_url}
-                alt={service.title}
-                className="w-full h-full object-cover"
-              />
-            ) : (
+          {/* Image Gallery */}
+          {service.image_urls && service.image_urls.length > 0 ? (
+            <div className="relative">
+              {/* Main Image */}
+              <div className="h-96 bg-gray-100 relative">
+                <img
+                  src={service.image_urls[selectedImageIndex]}
+                  alt={`${service.title} - Image ${selectedImageIndex + 1}`}
+                  className="w-full h-full object-cover"
+                />
+
+                {/* Category Badge */}
+                <div className="absolute top-4 right-4 px-4 py-2 bg-white/90 backdrop-blur-sm rounded-full text-sm font-semibold flex items-center gap-2 shadow-lg">
+                  {CATEGORY_ICONS[service.category as keyof typeof CATEGORY_ICONS]}
+                  {service.category}
+                </div>
+
+                {/* Navigation Arrows */}
+                {service.image_urls.length > 1 && (
+                  <>
+                    <button
+                      onClick={() => setSelectedImageIndex((selectedImageIndex - 1 + service.image_urls!.length) % service.image_urls!.length)}
+                      className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-3 rounded-full transition-colors"
+                    >
+                      ←
+                    </button>
+                    <button
+                      onClick={() => setSelectedImageIndex((selectedImageIndex + 1) % service.image_urls!.length)}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-3 rounded-full transition-colors"
+                    >
+                      →
+                    </button>
+                  </>
+                )}
+
+                {/* Image Counter */}
+                {service.image_urls.length > 1 && (
+                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/60 text-white px-3 py-1 rounded-full text-sm">
+                    {selectedImageIndex + 1} / {service.image_urls.length}
+                  </div>
+                )}
+              </div>
+
+              {/* Thumbnail Strip */}
+              {service.image_urls.length > 1 && (
+                <div className="flex gap-2 p-4 bg-gray-50 overflow-x-auto">
+                  {service.image_urls.map((url, index) => (
+                    <button
+                      key={index}
+                      onClick={() => setSelectedImageIndex(index)}
+                      className={`flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 transition-all ${
+                        index === selectedImageIndex ? 'border-primary-600 ring-2 ring-primary-200' : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      <img
+                        src={url}
+                        alt={`Thumbnail ${index + 1}`}
+                        className="w-full h-full object-cover"
+                      />
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : (
+            /* Fallback when no images */
+            <div className="h-64 bg-gradient-to-br from-primary-100 to-primary-200 flex items-center justify-center relative">
               <div className="text-8xl">
                 {CATEGORY_ICONS[service.category as keyof typeof CATEGORY_ICONS] || '🧑‍💼'}
               </div>
-            )}
-            <div className="absolute top-4 right-4 px-4 py-2 bg-white/90 backdrop-blur-sm rounded-full text-sm font-semibold flex items-center gap-2">
-              {CATEGORY_ICONS[service.category as keyof typeof CATEGORY_ICONS]}
-              {service.category}
+              <div className="absolute top-4 right-4 px-4 py-2 bg-white/90 backdrop-blur-sm rounded-full text-sm font-semibold flex items-center gap-2">
+                {CATEGORY_ICONS[service.category as keyof typeof CATEGORY_ICONS]}
+                {service.category}
+              </div>
             </div>
-          </div>
+          )}
 
           <div className="p-8">
             <div className="flex justify-between items-start mb-4">

@@ -2,12 +2,14 @@ import { useEffect, useState } from 'react';
 import { Navbar } from '../components/Navbar';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
+import { ServiceImageUpload } from '../components/ServiceImageUpload';
+import { SERVICE_CATEGORIES } from '../constants/services';
 
 interface ProviderProfile {
   id: string;
   bio: string;
   profile_image_url: string;
-  is_approved: boolean;
+  approval_status: string;
 }
 
 interface Service {
@@ -18,17 +20,8 @@ interface Service {
   price: number;
   price_type: string;
   is_active: boolean;
+  image_urls?: string[];
 }
-
-const CATEGORIES = [
-  'Lawn Care',
-  'Window Washing',
-  'Snow Shoveling',
-  'Pet Sitting',
-  'Tutoring',
-  'Car Washing',
-  'Other',
-];
 
 export const ProviderProfile = () => {
   const { profile: userProfile } = useAuth();
@@ -46,9 +39,10 @@ export const ProviderProfile = () => {
   const [editingService, setEditingService] = useState<Service | null>(null);
   const [serviceTitle, setServiceTitle] = useState('');
   const [serviceDescription, setServiceDescription] = useState('');
-  const [serviceCategory, setServiceCategory] = useState(CATEGORIES[0]);
+  const [serviceCategory, setServiceCategory] = useState(SERVICE_CATEGORIES[0]);
   const [servicePrice, setServicePrice] = useState('');
   const [servicePriceType, setServicePriceType] = useState<'fixed' | 'hourly'>('fixed');
+  const [serviceImageUrls, setServiceImageUrls] = useState<string[]>([]);
   const [serviceSaving, setServiceSaving] = useState(false);
 
   const [message, setMessage] = useState('');
@@ -147,6 +141,7 @@ export const ProviderProfile = () => {
         category: serviceCategory,
         price: parseFloat(servicePrice),
         price_type: servicePriceType,
+        image_urls: serviceImageUrls,
       };
 
       if (editingService) {
@@ -185,6 +180,7 @@ export const ProviderProfile = () => {
     setServiceCategory(service.category);
     setServicePrice(service.price.toString());
     setServicePriceType(service.price_type as 'fixed' | 'hourly');
+    setServiceImageUrls(service.image_urls || []);
     setShowServiceForm(true);
   };
 
@@ -207,9 +203,10 @@ export const ProviderProfile = () => {
     setEditingService(null);
     setServiceTitle('');
     setServiceDescription('');
-    setServiceCategory(CATEGORIES[0]);
+    setServiceCategory(SERVICE_CATEGORIES[0]);
     setServicePrice('');
     setServicePriceType('fixed');
+    setServiceImageUrls([]);
     setShowServiceForm(false);
   };
 
@@ -243,7 +240,7 @@ export const ProviderProfile = () => {
           </div>
         )}
 
-        {providerProfile && !providerProfile.is_approved && (
+        {providerProfile && providerProfile.approval_status !== 'approved' && (
           <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-3 rounded mb-6">
             Your profile is pending approval. You won't be visible to residents until an admin approves your account.
           </div>
@@ -342,7 +339,7 @@ export const ProviderProfile = () => {
                   onChange={(e) => setServiceCategory(e.target.value)}
                   className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500"
                 >
-                  {CATEGORIES.map((cat) => (
+                  {SERVICE_CATEGORIES.map((cat) => (
                     <option key={cat} value={cat}>
                       {cat}
                     </option>
@@ -381,6 +378,30 @@ export const ProviderProfile = () => {
                 </div>
               </div>
 
+              {/* Service Images */}
+              {providerProfile && editingService && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Service Photos
+                  </label>
+                  <ServiceImageUpload
+                    serviceId={editingService.id}
+                    providerId={providerProfile.id}
+                    currentImages={serviceImageUrls}
+                    onUploadComplete={(urls) => setServiceImageUrls(urls)}
+                    maxImages={5}
+                  />
+                </div>
+              )}
+
+              {!editingService && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <p className="text-sm text-blue-800">
+                    💡 <strong>Note:</strong> You can add photos to your service after creating it by clicking "Edit".
+                  </p>
+                </div>
+              )}
+
               <div className="flex space-x-2">
                 <button
                   type="submit"
@@ -409,8 +430,24 @@ export const ProviderProfile = () => {
               {services.map((service) => (
                 <div
                   key={service.id}
-                  className="border rounded-lg p-4 flex justify-between items-start"
+                  className="border rounded-lg p-4 flex gap-4"
                 >
+                  {/* Service Image */}
+                  {service.image_urls && service.image_urls.length > 0 && (
+                    <div className="flex-shrink-0">
+                      <img
+                        src={service.image_urls[0]}
+                        alt={service.title}
+                        className="w-24 h-24 object-cover rounded-lg"
+                      />
+                      {service.image_urls.length > 1 && (
+                        <div className="text-xs text-center text-gray-500 mt-1">
+                          +{service.image_urls.length - 1} more
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   <div className="flex-1">
                     <div className="flex items-center space-x-2 mb-2">
                       <h3 className="font-semibold text-lg">{service.title}</h3>
@@ -429,16 +466,16 @@ export const ProviderProfile = () => {
                     </div>
                   </div>
 
-                  <div className="flex space-x-2 ml-4">
+                  <div className="flex space-x-2">
                     <button
                       onClick={() => handleEditService(service)}
-                      className="text-primary-600 hover:text-primary-700 px-3 py-1 border border-primary-600 rounded"
+                      className="text-primary-600 hover:text-primary-700 px-3 py-1 border border-primary-600 rounded h-fit"
                     >
                       Edit
                     </button>
                     <button
                       onClick={() => handleDeleteService(service.id)}
-                      className="text-red-600 hover:text-red-700 px-3 py-1 border border-red-600 rounded"
+                      className="text-red-600 hover:text-red-700 px-3 py-1 border border-red-600 rounded h-fit"
                     >
                       Delete
                     </button>

@@ -69,14 +69,14 @@ export const Dashboard = () => {
           *,
           service_providers!inner (
             profile_image_url,
-            is_approved,
-            profiles!inner (
+            approval_status,
+            profiles!service_providers_user_id_fkey (
               full_name
             )
           )
         `)
         .eq('is_active', true)
-        .eq('service_providers.is_approved', true)
+        .eq('service_providers.approval_status', 'approved')
         .order('created_at', { ascending: false })
         .limit(5);
 
